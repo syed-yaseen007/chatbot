@@ -1,5 +1,7 @@
 Chatbot 💬
-An interactive web-based chatbot built with HTML, CSS, and JavaScript.
+
+
+An interactive web-based chatbot built with HTML, and JavaScript.
 It allows users to chat in real time and get dynamic responses right in the browser.
 
 📌 Features
