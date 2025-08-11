@@ -1,47 +1,50 @@
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch'); // if Node <18, install with npm i node-fetch
+const chatContainer = document.getElementById("chat-container");
+const userInput = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// Helper to display messages
+function appendMessage(message, className) {
+    const msgDiv = document.createElement("div");
+    msgDiv.classList.add("message", className);
+    msgDiv.textContent = message;
+    chatContainer.appendChild(msgDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
 
-const API_KEY = 'AIzaSyC4feZNV8RooFwcQUMtySHKwchJZnaUAzk'; // Your Google API key
+// Send user input to backend
+async function sendMessage() {
+    const message = userInput.value.trim();
+    if (!message) return;
 
-app.post('/api/search', async (req, res) => {
-  const { query } = req.body;
-  if (!query) return res.status(400).json({ error: 'Query is required' });
+    // Show user message
+    appendMessage(message, "user-msg");
+    userInput.value = "";
 
-  const endpoint = `https://kgsearch.googleapis.com/v1/entities:search?query=${encodeURIComponent(query)}&key=${API_KEY}&limit=1&indent=True`;
+    // Show a loading message from the bot
+    const loadingMsg = document.createElement("div");
+    loadingMsg.classList.add("message", "bot-msg");
+    loadingMsg.textContent = "Thinking...";
+    chatContainer.appendChild(loadingMsg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  try {
-    const response = await fetch(endpoint);
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Google API error' });
+    try {
+        const res = await fetch("http://localhost:8000/chat", { // Change to your backend URL
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_message: message })
+        });
+        const data = await res.json();
+
+        // Replace loading text with actual bot response
+        loadingMsg.textContent = data.bot_response || "[No response]";
+    } catch (error) {
+        loadingMsg.textContent = "Error: Could not reach server.";
+        console.error(error);
     }
+}
 
-    const data = await response.json();
-    if (data.itemListElement && data.itemListElement.length > 0) {
-      const entity = data.itemListElement[0].result;
-      const name = entity.name || 'Unknown';
-      const description = entity.description || '';
-      const detailedDesc = (entity.detailedDescription && entity.detailedDescription.articleBody) || '';
-
-      return res.json({
-        name,
-        description,
-        detailedDesc,
-      });
-    } else {
-      return res.json({ message: "Sorry, I couldn't find information on that." });
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+sendBtn.addEventListener("click", sendMessage);
+userInput.addEventListener("keypress", e => {
+    if (e.key === "Enter") sendMessage();
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Backend listening on port ${PORT}`);
-});
