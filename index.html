@@ -1,19 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Chatbot</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Google Knowledge Graph Chatbot</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+    body {
+      margin: 0;
+      background: #121212;
+      font-family: 'Inter', sans-serif;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .chat-container {
+      background: #1f1f1f;
+      width: 420px;
+      max-width: 90vw;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-header {
+      background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+      padding: 24px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 1.2px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      user-select: none;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 24px;
+      background: #121212;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #4b6cb7 transparent;
+    }
+    .chat-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background-color: #4b6cb7;
+      border-radius: 12px;
+    }
+    .message {
+      max-width: 70%;
+      margin-bottom: 16px;
+      padding: 16px 22px;
+      border-radius: 24px;
+      line-height: 1.5;
+      font-size: 1rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.7);
+      word-break: break-word;
+    }
+    .user-message {
+      background: #3a57e8;
+      color: #e6eaff;
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+      box-shadow: 0 6px 16px rgba(58, 87, 232, 0.6);
+    }
+    .bot-message {
+      background: #2a2a2a;
+      color: #c8c8c8;
+      align-self: flex-start;
+      border-bottom-left-radius: 6px;
+      box-shadow: 0 6px 16px rgba(42,42,42,0.9);
+      white-space: pre-line;
+    }
+    .chat-input {
+      display: flex;
+      background: #1f1f1f;
+      padding: 16px 20px;
+      border-top: 1px solid #333;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 30px;
+      border: none;
+      font-size: 1rem;
+      background: #121212;
+      color: #e0e0e0;
+      outline-offset: 2px;
+      outline-color: #4b6cb7;
+      font-weight: 500;
+      box-shadow: inset 0 0 10px #1f1f1f;
+    }
+    .chat-input input::placeholder {
+      color: #666;
+      font-weight: 400;
+    }
+    .chat-input input:focus {
+      outline-color: #6c8cff;
+    }
+    .chat-input button {
+      margin-left: 16px;
+      background: #4b6cb7;
+      border: none;
+      border-radius: 30px;
+      padding: 0 28px;
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(75, 108, 183, 0.8);
+      transition: background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chat-input button:hover {
+      background: #3a57e8;
+      box-shadow: 0 6px 20px rgba(58, 87, 232, 0.8);
+    }
+    .chat-input button:active {
+      background: #2a3fcc;
+    }
+  </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-box" id="chat-box"></div>
-    <div class="chat-input">
-      <input type="text" id="user-input" placeholder="Type a message..." />
-      <button onclick="sendMessage()">Send</button>
-    </div>
+
+  <div class="chat-container" role="main" aria-label="Google Knowledge Graph Chatbot">
+    <div class="chat-header">Google Knowledge Graph Chatbot</div>
+    <div class="chat-messages" id="chatMessages" aria-live="polite" aria-atomic="true"></div>
+    <form class="chat-input" onsubmit="event.preventDefault(); sendMessage();">
+      <input
+        id="userInput"
+        type="text"
+        placeholder="Ask about a person, place, or thing..."
+        autocomplete="off"
+        aria-label="Message input"
+        required
+      />
+      <button type="submit" aria-label="Send message">Send</button>
+    </form>
   </div>
-  <script src="script.js"></script>
+
+  <script>
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+
+    function addMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
+      msg.textContent = text;
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage(message, 'user');
+      userInput.value = '';
+
+      addMessage('Searching...', 'bot');
+      const lastBotMsg = chatMessages.querySelector('.bot-message:last-child');
+
+      try {
+        const response = await fetch('http://localhost:3000/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: message }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          lastBotMsg.textContent = 'Error: ' + data.error;
+        } else if (data.message) {
+          lastBotMsg.textContent = data.message;
+        } else {
+          lastBotMsg.textContent = `${data.name}${data.description ? ' — ' + data.description : ''}\n\n${data.detailedDesc || ''}`;
+        }
+      } catch (error) {
+        lastBotMsg.textContent = 'Failed to fetch response.';
+        console.error(error);
+      }
+
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    addMessage("Hello! Ask me about any person, place, or thing.", 'bot');
+
+    userInput.focus();
+  </script>
+
 </body>
 </html>
